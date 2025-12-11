@@ -1,0 +1,13 @@
+######################################################
+# RNA-seq alignment and read counting (shell)
+######################################################
+
+# 1) Makeing STAR index
+STAR --runMode genomeGenerate --runThreadN 8 --genomeDir ~/ikegami/computing_resources/genome_bfa/GRCh38/star/without_annot --genomeFastaFiles ~/ikegami/comput
+ing_resources/genome_bfa/GRCh38/genome/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fa
+
+# 2) Run STAR
+runSTAR_batch.sh kiuc025_lookup.txt hg38 ~//genome_bfa/GRCh38/star/without_annot/ ~/genome_bfa/GRCh38/gtf/gencode_v38/gencode.v38.basic.annotation.gtf exon 8 80 1 ~/ikegami/progeria/RNAseq/ hg38_gencodeV38_exon
+
+# lookup file was formatted as ID[tab]desc[tab]fastq(fullpath)
+
