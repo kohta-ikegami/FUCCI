@@ -1,1 +1,19 @@
+######################################
+# Reference download and formatting (shell)
+#######################################
 
+# 1) Reference genome
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna.gz
+mv GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fa
+
+# 2) Gene annotation
+wget http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_38/gencode.v38.basic.annotation.gtf.gz
+
+# 3) Generate Pergene transcript file
+processGTF.sh gencode.v38.basic.annotation.gtf
+## This generates gencode.v38.basic.annotation_pergene.bed
+## Find processGTF.sh under FUCCI directory
+
+# 4) Make genePred
+gtfToGenePred -genePredExt gencode.v38.basic.annotation.gtf gencode.v38.basic.annotation.genePred
+## gtfToGenePred is from Jim Kent's ucsctools.
