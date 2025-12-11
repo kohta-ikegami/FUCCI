@@ -86,18 +86,3 @@ fi
 
 exit;
 
-
-
-################################################################################################
-# Some useful notes about how STAR works:
-# 1) In "--quantMode GeneCounts", the only reads that are filtered out are multimappers.
-# https://groups.google.com/g/rna-star/c/gAAR_5N5F34/m/dZ9cJ3MBCAAJ 
-
-# TPM = (10^3*read count/length)/(sum count/10^6) = 10^-3*(read count/length)/(sum count)
-# readnum=$(cat Log.final.out | awk '{$1=$1};1' | sed 's/\s|\s/\t/g' | awk -F "\t" '($1 == "Uniquely mapped reads number"){print $2}') 
-
-###########################################
-# Copyright (c) 2021, Kohta Ikegami
-# All rights reserved.
-# contact: ikgmk@uchicago.edu
-###########################################	
