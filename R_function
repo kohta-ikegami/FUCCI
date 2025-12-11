@@ -1,0 +1,19 @@
+# This function extracts information from DESEq2 output in R
+
+extract.deseq <- function (dds, seed, alpha, abslfc, rowname, condition, contrast1, contrast2) {
+   x <- results(dds, alpha = alpha, contrast = c(condition, contrast1, contrast2));
+   x <- data.frame(x) %>% 
+   	rownames_to_column(var="rowname") %>%
+   	dplyr::select(rowname, lfc = log2FoldChange, padj = padj) %>% 
+	   dplyr::mutate(bin = as.factor(
+         ifelse(is.na(lfc) | is.na(padj), "no", 
+				ifelse(padj < alpha & lfc > abslfc, "up", 
+         		ifelse(padj < alpha & lfc < -abslfc, "dn", "no")
+         	)
+      	)
+      )) %>% 
+   	dplyr::mutate(bin = factor(bin, levels = c("up", "dn", "no")));
+   
+   names(x) <- c(rowname, paste0(seed, ".lfc"), paste0(seed, ".padj"), paste0(seed, ".3bin"));
+   return(x);
+}
