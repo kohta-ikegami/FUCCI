@@ -22,7 +22,6 @@ if [ $# -lt 7 ]; then # '-lt' stands for less than
 fi
 
 # 0) Modules
-#	module load STAR/2.7.9 samtools/1.10.0 ucsctools/v380 (HPC silently removed v380!)
 	module load STAR/2.7.9 samtools/1.18.0 ucsctools/v466
 
 # 1) Variables
@@ -83,17 +82,3 @@ fi
 exit;
 
 
-################################################################################################
-# Some useful notes about how STAR works:
-# 1) In "--quantMode GeneCounts", the only reads that are filtered out are multimappers.
-# https://groups.google.com/g/rna-star/c/gAAR_5N5F34/m/dZ9cJ3MBCAAJ 
-
-# About TPM:
-# https://groups.google.com/g/rna-star/c/4PRerLfx0qc/m/QFpHSua1CAAJ
-# https://groups.google.com/g/rna-star/c/euzDq0H1AUQ/m/1BzIKoTsCQAJ
-
-###########################################
-# Copyright (c) 2021, Kohta Ikegami
-# All rights reserved.
-# contact: ikgmk@uchicago.edu
-###########################################	
