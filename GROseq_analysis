@@ -1,0 +1,33 @@
+####################################
+# GRO-seq alignment and read counting
+# THIS IS SHELL SCRIPT
+####################################
+
+# 1) Downloading bowtie index
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna.bowtie_index.tar.gz .
+
+# 2) Run bowtie
+module load bowtie2/2.4.2 samtools/1.3.1
+bowtie2 -p 20 -x ~/genome_bfa/GRCh38/bowtie/GRCh38 -1 ./lane1/R1.fastq.gz,./lane2/R1.fastq.gz -2 ./lane1/R2.fastq.gz,./lane2/R2.fastq.gz -X 2000 --no-mixed --no-discordant | samtools sort -o sorted.bam -@ 20 -m 1G -
+## Do this for all data 
+
+# 3) Make all gencode V38 transcripts
+
+cat gencode.v38.basic.annotation.genePred | 
+awk '{OFS="\t"; print $2,$4,$5,$1,".",$3}' | 
+sort -k1,1 -k2,2n > gencode.v38.basic.annotation_alltranscript_k1sort.bed
+
+# 4) Counting 5'end of reads
+
+	# In NEBNext directional RNA-seq library prep:
+	# READ2 reads from the 5'end of fragmented RNAs
+	# READ1 reads from the 3' end of the reverse complement of the fragmented RNAs.
+	# So, we will extract READ2 5' end because this is the position where Pol II was located before run-on.
+	# SAM flag 131: proper pair, second in pair 	
+
+process_GROseq_v1.sh sorted.bam string gencode.v38.basic.annotation_alltranscript_k1sort.bed
+# Do this for all bam files
+
+###########################################
+# FROM HERE IN R
+###########################################
