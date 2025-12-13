@@ -1,0 +1,250 @@
+###############################
+# PCA analysis
+###############################
+
+rna_count_long <- readRDS(file = "RNA_count_tpm_long.rds")
+gro_count_long <- readRDS(file = "GRO_count_tpm_long.rds")
+int_count_long <- readRDS(file = "Intron_count_tpm_long.rds")
+my_samples <- fread(file="fucci_samples.txt")
+
+rna_pca <- rna_count_long %>%
+	left_join(my_samples %>% dplyr::filter(data_type=="RNA"), by="seq_id") %>%
+	group_by(gene_id) %>%
+	mutate(min=min(count)) %>%
+	ungroup %>%
+	dplyr::filter(min > 0) %>%
+	mutate(logtpm=log10(tpm)) %>%
+	group_by(seq_id) %>%
+	mutate(logtpm=scale(logtpm)) %>%
+	ungroup %>%
+	select(gene_id, seq_id, logtpm) %>%
+	pivot_wider(names_from=seq_id, values_from= logtpm) %>%
+	column_to_rownames(var="gene_id") %>%
+	t() %>%
+	prcomp(scale=F)
+
+gro_pca <- gro_count_long %>%
+	left_join(my_samples %>% dplyr::filter(data_type=="GRO"), by="seq_id") %>%
+	group_by(gene_id) %>%
+	mutate(min=min(count)) %>%
+	ungroup %>%
+	dplyr::filter(min > 0) %>%
+	mutate(logtpm=log10(tpm)) %>%
+	group_by(seq_id) %>%
+	mutate(logtpm=scale(logtpm)) %>%
+	ungroup %>%
+	select(gene_id, seq_id, logtpm) %>%
+	pivot_wider(names_from=seq_id, values_from= logtpm) %>%
+	column_to_rownames(var="gene_id") %>%
+	t() %>%
+	prcomp(scale=F)
+
+int_pca <- int_count_long %>%
+	left_join(my_samples %>% dplyr::filter(data_type=="RNA"), by="seq_id") %>%
+	group_by(gene_id) %>%
+	mutate(min=min(count)) %>%
+	ungroup %>%
+	dplyr::filter(min > 0) %>%
+	mutate(logtpm=log10(tpm)) %>%
+	group_by(seq_id) %>%
+	mutate(logtpm=scale(logtpm)) %>%
+	ungroup %>%
+	select(gene_id, seq_id, logtpm) %>%
+	pivot_wider(names_from=seq_id, values_from= logtpm) %>%
+	column_to_rownames(var="gene_id") %>%
+	t() %>%
+	prcomp(scale=F)
+
+
+p1 <- as.data.frame(rna_pca$x) %>%
+   rownames_to_column(var="seq_id") %>%
+   left_join(my_samples, by="seq_id") %>%
+   ggplot(
+	   aes(x=PC1, y=PC2, color=stage, shape=factor(biorep), label=seq_id)
+   ) +
+   geom_point(size=5) +
+	geom_text(nudge_x=2) +
+	labs(title="RNA")
+
+p2 <- as.data.frame(gro_pca$x) %>%
+   rownames_to_column(var="seq_id") %>%
+   left_join(my_samples, by="seq_id") %>%
+   ggplot(
+	   aes(x=PC1, y=PC2, color=stage, shape=factor(biorep), label=seq_id)
+   ) +
+   geom_point(size=5) +
+	geom_text(nudge_x=2) +
+	labs(title="GRO")
+
+p3 <- as.data.frame(int_pca$x) %>%
+   rownames_to_column(var="seq_id") %>%
+   left_join(my_samples, by="seq_id") %>%
+   ggplot(
+	   aes(x=PC1, y=PC2, color=stage, shape=factor(biorep), label=seq_id)
+   ) +
+   geom_point(size=5) +
+	geom_text(nudge_x=2) +
+	labs(title="Intron")
+
+
+########################################
+# Gene overlap between clusters
+########################################
+
+RNA_wide <- readRDS(file = "RNA_logtpm_z_degene_k6_wide.rds")
+GRO_wide <- readRDS(file = "GRO_logtpm_z_degene_k6_wide.rds")
+
+mydat <- RNA_wide %>%
+	dplyr::select(gene_id, rna_k6) %>%
+	left_join(GRO_wide %>% dplyr::select(gene_id, gro_k6), by="gene_id")
+
+## Fisher's test
+x=NULL; for(i in c(1:6)) {
+   for(j in c(1:6)) {
+	   y.y= mydat %>% dplyr::filter(rna_k6==i & gro_k6==j) %>% nrow;
+   	y.n= mydat %>% dplyr::filter(rna_k6==i & gro_k6!=j) %>% nrow;
+   	n.y= mydat %>% dplyr::filter(rna_k6!=i & gro_k6==j) %>% nrow;
+   	n.n= mydat %>% dplyr::filter(rna_k6!=i & gro_k6!=j) %>% nrow;
+      
+      fres <- fisher.test( matrix(c(y.y, y.n, n.y, n.n), nrow=2) );
+      
+     x <- rbind(x,
+         data.frame(
+             RNA=i,
+             GRO=j,
+             fish.p=fres$p.value,
+             fish.o=unname(fres$estimate),
+             fish.conf1=fres$conf.int[1],
+             fish.conf2=fres$conf.int[2],
+             yes.yes= y.y,
+             yes.no= y.n,
+             no.yes= n.y,
+             no.no= n.n
+         )      
+      )
+   }
+}
+   
+x.adj <- x %>% mutate(
+    percent= round(100*yes.yes/(yes.yes+yes.no)),
+    fish.padj=p.adjust(fish.p, method="BH")
+)
+
+## Plot
+
+x.adj %>%
+    mutate(
+        mylabel=ifelse(fish.padj< 1e-3, "*", "")
+    ) %>%
+    ggplot(
+        aes(y=fct_rev(RNA), x= GRO, size=percent, fill=log2(fish.o))
+    ) +
+    geom_point(shape = 21) +
+    geom_text(aes(label=mylabel), size=7, nudge_x=0, nudge_y=-0.05) +
+    scale_fill_distiller(palette = "RdYlBu") +
+    scale_size_continuous(range = c(1, 12), breaks=c(0, 10,20,30,40), guide = guide_legend(reverse = TRUE))+
+    scale_x_discrete(position = "top")
+
+
+##########################################
+# Z-score correlation
+##########################################
+
+RNA_wide <- readRDS(file = "RNA_logtpm_z_degene_k6_wide.rds")
+GRO_wide <- readRDS(file = "GRO_logtpm_z_degene_k6_wide.rds")
+Intron_wide <- readRDS(file = "Intron_logtpm_z_wide.rds")
+
+rna_dat <- RNA_wide %>% 
+	select(gene_id, starts_with("logtpm_z_")) %>%
+	pivot_longer(cols=starts_with("logtpm_z_"), names_to="stage", values_to="z", names_prefix="logtpm_z_") %>%
+	mutate(type="rna")
+
+int_dat <- Intron_wide %>% 
+	select(gene_id, starts_with("logtpm_z_")) %>%
+	pivot_longer(cols=starts_with("logtpm_z_"), names_to="stage", values_to="z", names_prefix="logtpm_z_") %>%
+	mutate(type="int")
+
+gro_dat <- GRO_wide %>% 
+	select(gene_id, starts_with("logtpm_z_")) %>%
+	pivot_longer(cols=starts_with("logtpm_z_"), names_to="stage", values_to="z", names_prefix="logtpm_z_") %>%
+	mutate(type="int")
+
+my_corr <- rbind(rna_dat, int_dat, gro_dat) %>%
+	left_join(RNA_wide %>% select(gene_id, rna_k6), by="gene_id") %>%
+	pivot_wider(names_from=type, values_from=z) %>%
+	group_by(gene_id, rna_k6) %>%
+	summarize(
+      rna_int_cor=cor(rna, int, method = "pearson", use="pairwise.complete.obs"),      
+      rna_gro_cor=cor(rna, gro, method = "pearson", use="pairwise.complete.obs"),
+      int_gro_cor=cor(int, gro, method = "pearson", use="pairwise.complete.obs")
+   ) %>%
+	ungroup
+
+p1 <- my_corr %>%
+	dplyr::filter(!is.na(rna_k6)) %>%	
+	dplyr::filter(!is.na(rna_int_cor)) %>%
+	mutate(cor_bin = cut(rna_int_cor, breaks = seq(-1, 1, length.out = 9), include.lowest = TRUE)) %>%
+	ggplot(
+   	aes(x=rna_k6, fill=cor_bin)
+   ) +
+	geom_bar(position="fill", color = "black", linewidth = 0.2) +
+	scale_fill_brewer(palette = "RdBu", direction = -1) +
+	labs(title="RNA vs intron z corr\n")
+
+p2 <- my_corr %>%
+	dplyr::filter(!is.na(rna_k6)) %>%	
+	dplyr::filter(!is.na(rna_gro_cor)) %>%
+	mutate(cor_bin = cut(rna_gro_cor, breaks = seq(-1, 1, length.out = 9), include.lowest = TRUE)) %>%
+	ggplot(
+   	aes(x=rna_k6, fill=cor_bin)
+   ) +
+	geom_bar(position="fill", color = "black", linewidth = 0.2) +
+	scale_fill_brewer(palette = "RdBu", direction = -1) +
+	labs(title="RNA vs GRO z corr\n")
+
+
+##########################
+# sessionInfo
+##########################
+
+> sessionInfo()
+R version 4.4.0 (2024-04-24)
+Platform: x86_64-apple-darwin20
+Running under: macOS 15.7.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] readxl_1.4.5                ggrastr_1.0.2               DESeq2_1.44.0               SummarizedExperiment_1.34.0 Biobase_2.64.0             
+ [6] MatrixGenerics_1.16.0       matrixStats_1.5.0           GenomicRanges_1.56.2        GenomeInfoDb_1.40.1         IRanges_2.38.1             
+[11] S4Vectors_0.42.1            BiocGenerics_0.50.0         sva_3.52.0                  BiocParallel_1.38.0         genefilter_1.86.0          
+[16] mgcv_1.9-3                  nlme_3.1-168                ggthemes_5.1.0              ggnewscale_0.5.2            lemon_0.5.1                
+[21] ggrepel_0.9.6               data.table_1.17.8           preprocessCore_1.66.0       viridis_0.6.5               viridisLite_0.4.2          
+[26] scales_1.4.0                gridExtra_2.3               RColorBrewer_1.1-3          lubridate_1.9.4             forcats_1.0.0              
+[31] stringr_1.5.1               dplyr_1.1.4                 purrr_1.1.0                 readr_2.1.5                 tidyr_1.3.1                
+[36] tibble_3.3.0                ggplot2_3.5.2               tidyverse_2.0.0             pacman_0.5.1               
+
+loaded via a namespace (and not attached):
+ [1] DBI_1.2.3               rlang_1.1.6             magrittr_2.0.3          compiler_4.4.0          RSQLite_2.4.2           png_0.1-8              
+ [7] vctrs_0.6.5             pkgconfig_2.0.3         crayon_1.5.3            fastmap_1.2.0           XVector_0.44.0          labeling_0.4.3         
+[13] utf8_1.2.6              tzdb_0.5.0              UCSC.utils_1.0.0        ggbeeswarm_0.7.2        bit_4.6.0               xfun_0.52              
+[19] zlibbioc_1.50.0         cachem_1.1.0            jsonlite_2.0.0          blob_1.2.4              DelayedArray_0.30.1     parallel_4.4.0         
+[25] R6_2.6.1                stringi_1.8.7           limma_3.60.6            cellranger_1.1.0        Rcpp_1.1.0              knitr_1.50             
+[31] Matrix_1.7-3            splines_4.4.0           timechange_0.3.0        tidyselect_1.2.1        rstudioapi_0.17.1       abind_1.4-8            
+[37] codetools_0.2-20        lattice_0.22-7          plyr_1.8.9              withr_3.0.2             KEGGREST_1.44.1         evaluate_1.0.4         
+[43] survival_3.8-3          Biostrings_2.72.1       pillar_1.11.0           generics_0.1.4          hms_1.1.3               xtable_1.8-4           
+[49] glue_1.8.0              tools_4.4.0             annotate_1.82.0         locfit_1.5-9.12         XML_3.99-0.18           Cairo_1.6-2            
+[55] grid_4.4.0              AnnotationDbi_1.66.0    edgeR_4.2.2             colorspace_2.1-1        GenomeInfoDbData_1.2.12 beeswarm_0.4.0         
+[61] vipor_0.4.7             cli_3.6.5               S4Arrays_1.4.1          gtable_0.3.6            SparseArray_1.4.8       farver_2.1.2           
+[67] memoise_2.0.1           lifecycle_1.0.4         httr_1.4.7              statmod_1.5.0           bit64_4.6.0-1        
