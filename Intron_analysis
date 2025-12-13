@@ -39,4 +39,123 @@ featureCounts -F SAF -Q 255 -g gene_id -s 2 -a gencode.v38.basic.annotation_perg
 
 ############################################    FROM HERE IN R ############################################
 
+###################################################
+# 1) Load raw counts 
+###################################################
 
+## Do NOT use tpm in this Robject. They are not from batch corrected counts. 
+
+# requires
+
+library(data.table)
+my_genes <- fread(file="gencode.v38.basic.annotation_pergene.bed") %>% dplyr::rename(chr="#chr") %>% as.data.frame
+my_samples <- fread(file="fucci_samples.txt") %>% dplyr::filter(data_type=="RNA") %>% as.data.frame
+my_count <- fread(file="intron_rawcount.txt") %>% as.data.frame
+intron_meta <- fread(file="intron_meta.txt") %>% as.data.frame
+
+
+###################################################
+# 2) Batch correction
+###################################################
+
+my_count_wide <- my_count %>%
+	pivot_wider(id_cols=gene_id, names_from=seq_id, values_from=count) %>%
+	column_to_rownames("gene_id")
+
+library(sva)
+my_count_adj_wide <- ComBat_seq(
+  as.matrix(my_count_wide), 
+  batch=my_samples$biorep, 
+  group=my_samples$stage
+)
+
+###################################################
+# 3) Compute TPM
+###################################################
+
+my_count_tpm_long <- my_count_adj_wide %>%
+	as.data.frame %>%
+	rownames_to_column("gene_id") %>%
+	pivot_longer(cols= -gene_id, names_to="seq_id", values_to="count") %>%
+	mutate(seq_id=factor(seq_id)) %>%
+	left_join(intron_meta %>% select(gene_id, int.length), by="gene_id") %>%
+	mutate(rpk=(1+count)*10^3/int.length) %>%
+	group_by(seq_id) %>%
+	mutate(tpm=rpk*10^6/sum(rpk)) %>%
+	ungroup %>%
+	select(gene_id, seq_id, count, tpm)	
+
+###################################################
+# 4) Compute mean log10 TPM and z-score per stage 
+###################################################
+
+my_logtpm_z_wide <- my_count_tpm_long %>%
+	left_join(my_samples, by="seq_id") %>%
+	group_by(gene_id, stage) %>%
+	summarize(logtpm_m=mean(log10(tpm))) %>%
+	ungroup %>%
+	group_by(gene_id) %>%
+	mutate(logtpm_z=scale(logtpm_m, scale=T)) %>%
+	ungroup %>%
+	pivot_wider(id_cols=gene_id, names_from=stage, values_from=c(logtpm_m, logtpm_z))
+
+
+###################################################
+# 6) Write data
+###################################################
+
+## Batch-corrected count and tpm in long format
+saveRDS(my_count_tpm_long, file = "Intron_count_tpm_long.rds")
+
+## Processed data in wide format
+my_logtpm_z_wide <- my_genes %>%
+	dplyr::select(gene_id:txlength) %>%
+	left_join(my_logtpm_z_wide, by="gene_id")
+
+saveRDS(my_logtpm_z_wide, file = "Intron_logtpm_z_wide.rds")
+
+###################################################
+# 7) SessionInfo
+###################################################
+
+> sessionInfo()
+R version 4.4.0 (2024-04-24)
+Platform: x86_64-apple-darwin20
+Running under: macOS 15.7.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] readxl_1.4.5                ggrastr_1.0.2               DESeq2_1.44.0               SummarizedExperiment_1.34.0 Biobase_2.64.0             
+ [6] MatrixGenerics_1.16.0       matrixStats_1.5.0           GenomicRanges_1.56.2        GenomeInfoDb_1.40.1         IRanges_2.38.1             
+[11] S4Vectors_0.42.1            BiocGenerics_0.50.0         sva_3.52.0                  BiocParallel_1.38.0         genefilter_1.86.0          
+[16] mgcv_1.9-3                  nlme_3.1-168                ggthemes_5.1.0              ggnewscale_0.5.2            lemon_0.5.1                
+[21] ggrepel_0.9.6               data.table_1.17.8           preprocessCore_1.66.0       viridis_0.6.5               viridisLite_0.4.2          
+[26] scales_1.4.0                gridExtra_2.3               RColorBrewer_1.1-3          lubridate_1.9.4             forcats_1.0.0              
+[31] stringr_1.5.1               dplyr_1.1.4                 purrr_1.1.0                 readr_2.1.5                 tidyr_1.3.1                
+[36] tibble_3.3.0                ggplot2_3.5.2               tidyverse_2.0.0             pacman_0.5.1               
+
+loaded via a namespace (and not attached):
+ [1] DBI_1.2.3               rlang_1.1.6             magrittr_2.0.3          compiler_4.4.0          RSQLite_2.4.2           png_0.1-8              
+ [7] vctrs_0.6.5             pkgconfig_2.0.3         crayon_1.5.3            fastmap_1.2.0           XVector_0.44.0          labeling_0.4.3         
+[13] utf8_1.2.6              tzdb_0.5.0              UCSC.utils_1.0.0        ggbeeswarm_0.7.2        bit_4.6.0               xfun_0.52              
+[19] zlibbioc_1.50.0         cachem_1.1.0            jsonlite_2.0.0          blob_1.2.4              DelayedArray_0.30.1     parallel_4.4.0         
+[25] R6_2.6.1                stringi_1.8.7           limma_3.60.6            cellranger_1.1.0        Rcpp_1.1.0              knitr_1.50             
+[31] Matrix_1.7-3            splines_4.4.0           timechange_0.3.0        tidyselect_1.2.1        rstudioapi_0.17.1       abind_1.4-8            
+[37] codetools_0.2-20        lattice_0.22-7          plyr_1.8.9              withr_3.0.2             KEGGREST_1.44.1         evaluate_1.0.4         
+[43] survival_3.8-3          Biostrings_2.72.1       pillar_1.11.0           generics_0.1.4          hms_1.1.3               xtable_1.8-4           
+[49] glue_1.8.0              tools_4.4.0             annotate_1.82.0         locfit_1.5-9.12         XML_3.99-0.18           Cairo_1.6-2            
+[55] grid_4.4.0              AnnotationDbi_1.66.0    edgeR_4.2.2             colorspace_2.1-1        GenomeInfoDbData_1.2.12 beeswarm_0.4.0         
+[61] vipor_0.4.7             cli_3.6.5               S4Arrays_1.4.1          gtable_0.3.6            SparseArray_1.4.8       farver_2.1.2           
+[67] memoise_2.0.1           lifecycle_1.0.4         httr_1.4.7              statmod_1.5.0           bit64_4.6.0-1       
