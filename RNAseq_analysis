@@ -209,7 +209,7 @@ my_logtpm_z_degene_k6_wide %>%
          c(starts_with("tpm_"), starts_with("logtpm_m_"), starts_with("logtpm_z_")), 
       	~ round(.x, 3))
    ) %>%
-	write.csv(file="rna_exon.csv", row.names=F, quote=F)
+	write.csv(file="rna_exon_suppl.csv", row.names=F, quote=F)
 
 ###################################################
 # 8) Session Info
