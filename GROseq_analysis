@@ -1,6 +1,7 @@
+###################################################### FROM HERE IN SHELL ###############################################
+
 ####################################
-# GRO-seq alignment and read counting
-# THIS IS SHELL SCRIPT
+# 1) GRO-seq alignment and read counting
 ####################################
 
 # 1) Downloading bowtie index
@@ -28,12 +29,11 @@ sort -k1,1 -k2,2n > gencode.v38.basic.annotation_alltranscript_k1sort.bed
 process_GROseq_v1.sh sorted.bam string gencode.v38.basic.annotation_alltranscript_k1sort.bed
 # Do this for all bam files
 
-###########################################
-# FROM HERE IN R
-###########################################
+
+###################################################### FROM HERE IN R ###############################################
 
 ###################################################
-# 1) Load raw counts 
+# 2) Load raw counts 
 ###################################################
 
 ## Do NOT use tpm in this Robject. They are not from batch corrected counts. 
@@ -46,7 +46,7 @@ my_count <- fread(file="gro_rawcount.txt") %>% as.data.frame
 
 
 ###################################################
-# 2) Batch correction
+# 3) Batch correction
 ###################################################
 
 my_count_wide <- my_count %>%
@@ -64,7 +64,7 @@ my_count_adj_wide <- ComBat_seq(
 )
 
 ###################################################
-# 3) Compute TPM
+# 4) Compute TPM
 ###################################################
 
 my_count_tpm_long <- my_count_adj_wide %>%
@@ -80,7 +80,7 @@ my_count_tpm_long <- my_count_adj_wide %>%
 	select(gene_id, seq_id, count, tpm)	
 
 ###################################################
-# 4) Compute mean log10 TPM and z-score per stage 
+# 5) Compute mean log10 TPM and z-score per stage 
 ###################################################
 
 my_logtpm_z_wide <- my_count_tpm_long %>%
@@ -94,7 +94,7 @@ my_logtpm_z_wide <- my_count_tpm_long %>%
 	pivot_wider(id_cols=gene_id, names_from=stage, values_from=c(logtpm_m, logtpm_z))
 
 ###################################################
-# 5) DESeq2
+# 6) DESeq2
 ###################################################
 
 library(DESeq2)
@@ -121,7 +121,7 @@ gro.eg1.g1 <- extract.deseq(dds, "gro.eg1.g1_de05.lfc05", 0.05, 0.5, "gene_id", 
 gro.g1.g2 <- extract.deseq(dds, "gro.g1.g2_de05.lfc05", 0.05, 0.5, "gene_id", "stage", "G2", "G1")
 gro.g2.eg1 <- extract.deseq(dds, "gro.g2.eg1_de05.lfc05", 0.05, 0.5, "gene_id", "stage", "EG1", "G2")
 
-### See R_function for custom function extract.deseq 
+### See "R_function" page for the custom function extract.deseq 
 
 ## Combine as a wide format
 gro_degene_wide <- gro.eg1.g1 %>%
@@ -129,7 +129,7 @@ gro_degene_wide <- gro.eg1.g1 %>%
     left_join(gro.g2.eg1, by="gene_id")
 
 ###################################################
-# 6) k means clustering 
+# 7) k means clustering 
 ###################################################
 
 ## Extract gene_id for union DE genes 
@@ -167,7 +167,7 @@ gro_k6_wide <- data.frame(my_k=k.out$cluster) %>%
 	dplyr::select(gene_id, gro_k6)
 
 ###################################################
-# 7) PCA
+# 8) PCA
 ###################################################
 
 my_logtpm <- my_count_tpm_long %>%
@@ -197,7 +197,7 @@ as.data.frame(my_pca$x) %>%
 
 
 ###################################################
-# 8) Write data
+# 9) Write data
 ###################################################
 
 ## Batch-corrected count and tpm in long format
@@ -231,7 +231,7 @@ my_logtpm_z_degene_k6_wide %>%
 
 
 ################################
-# 9) sessionInfo
+# 10) sessionInfo
 ################################
 
 > sessionInfo()
