@@ -103,7 +103,8 @@ rna.eg1.g1 <- extract.deseq(dds, "rna.eg1.g1_de05.lfc05", 0.05, 0.5, "gene_id", 
 rna.g1.s <- extract.deseq(dds, "rna.g1.s_de05.lfc05", 0.05, 0.5, "gene_id", "stage", "S", "G1")
 rna.s.g2 <- extract.deseq(dds, "rna.s.g2_de05.lfc05", 0.05, 0.5, "gene_id", "stage", "G2", "S")
 rna.g2.eg1 <- extract.deseq(dds, "rna.g2.eg1_de05.lfc05", 0.05, 0.5, "gene_id", "stage", "EG1", "G2")
-### See R_function for custom function extract.deseq 
+
+### See "R_function" page for the custom function extract.deseq 
 
 ## Combine as a wide format
 rna_degene_wide <- rna.eg1.g1 %>%
