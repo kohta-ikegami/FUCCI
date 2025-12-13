@@ -167,37 +167,7 @@ gro_k6_wide <- data.frame(my_k=k.out$cluster) %>%
 	dplyr::select(gene_id, gro_k6)
 
 ###################################################
-# 8) PCA
-###################################################
-
-my_logtpm <- my_count_tpm_long %>%
-	left_join(my_samples, by="seq_id") %>%
-	group_by(gene_id) %>%
-	mutate(min=min(tpm)) %>%
-	ungroup %>%
-	dplyr::filter(min > 10) %>%
-	mutate(logtpm=log10(tpm)) %>%
-	group_by(seq_id) %>%
-	mutate(logtpm=scale(logtpm)) %>%
-	ungroup %>%
-	select(gene_id, seq_id, logtpm) %>%
-	pivot_wider(names_from=seq_id, values_from= logtpm) %>%
-	column_to_rownames(var="gene_id")
-
-my_pca <- prcomp(t(my_logtpm), scale=F)
-
-as.data.frame(my_pca$x) %>%
-   rownames_to_column(var="seq_id") %>%
-   left_join(my_samples, by="seq_id") %>%
-   ggplot(
-	   aes(x=PC1, y=PC2, color=stage, shape=factor(biorep), label=seq_id)
-   ) +
-   geom_point(size=5) +
-	geom_text(nudge_x=2)
-
-
-###################################################
-# 9) Write data
+# 8) Write data
 ###################################################
 
 ## Batch-corrected count and tpm in long format
@@ -231,7 +201,7 @@ my_logtpm_z_degene_k6_wide %>%
 
 
 ################################
-# 10) sessionInfo
+# 9) sessionInfo
 ################################
 
 > sessionInfo()
