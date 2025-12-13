@@ -196,7 +196,7 @@ my_logtpm_z_degene_k6_wide <- my_genes %>%
 
 saveRDS(my_logtpm_z_degene_k6_wide, file = "RNA_logtpm_z_degene_k6_wide.rds")
 
-## Samplemental file
+## Supplemental file
 
 my_logtpm_z_degene_k6_wide %>%
 	left_join(my_count_tpm_long %>%
