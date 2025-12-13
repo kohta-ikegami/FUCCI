@@ -231,7 +231,7 @@ my_logtpm_z_degene_k6_wide %>%
 
 
 ################################
-# sessionInfo
+# 9) sessionInfo
 ################################
 
 > sessionInfo()
