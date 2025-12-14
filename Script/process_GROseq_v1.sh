@@ -27,7 +27,7 @@ fi
 # 1) Modules
 	module unload samtools
 	module unload ucsctools
-	module load bedtools/2.30.0 samtools/1.18.0 ucsctools/v466 #v380 stopped working.
+	module load bedtools/2.30.0 samtools/1.18.0 ucsctools/v466
 
 # 2) Variables
 
@@ -152,49 +152,4 @@ fi
 
 
 exit;
-	
-
-#########################################
-# Make bedgraph for 5'-end coverage
-#########################################
-
-	awk '{OFS="\t"; k=$4; for(i=0;i<k;i++) print $1, $2-10, $2+10}' ./$plusbg |
-	awk '{OFS="\t"; k=$4; for(i=0;i<k;i++) print $1, $2-10, $2+10}' ./$minusbg |
-
-
-# 7) Get total fragment count
-
-	totcount=$(samtools view -c -f 131 -q $mapq $bam)
-	echo -e "Total number of mapped fragments in "$bam" at MAPQ "$mapq" with FLAG "$flag":" $totcount >> $logfile
-
-# 8) Make normalized 5'-end count bigwig	
-	norm_plusbg="$seed"_readcount_np.bg
-	norm_minusbg="$seed"_readcount_nm.bg
-	norm_plusbw="$seed"_readcount_np.bw
-	norm_minusbw="$seed"_readcount_nm.bw
-	
-# 9) Scale factor (normalized by total fragment counts in millions)
-	scale=$(awk 'BEGIN{printf "%.3f", 1000000/'$totcount'}')
-	echo -e "Here is the scale factor:" $scale >> $logfile
-
-# 10) Write scaled bg
-	awk '{printf "%s\t%s\t%s\t%.3f\n", $1, $2, $3, $4*'$scale'}' ./$plusbg > ./$norm_plusbg
-	echo -e "Finished writing plus-strand bg file." >> $logfile
-	
-	awk '{printf "%s\t%s\t%s\t%.3f\n", $1, $2, $3, $4*'$scale'}' ./$minusbg > ./$norm_minusbg
-	echo -e "Finished writing minus-strand bg file." >> $logfile
-	
-# 11) Convert to bw
-	bedGraphToBigWig ./$norm_plusbg $chrom ./$norm_plusbw	
-	echo -e "Finished writing plus-strand bw file." >> $logfile
-
-	bedGraphToBigWig ./$norm_minusbg $chrom ./$norm_minusbw	
-	echo -e "Finished writing minus-strand bw file." >> $logfile
-
-	
-###########################################
-# Author: Kohta Ikegami
-# Contact: kohta.ikegami@cchmc.org
-# Copyright: CC-BY-NC-SA 
-###########################################	
 
