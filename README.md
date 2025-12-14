@@ -1,17 +1,20 @@
 # FUCCI
 This repo includes codes for the FUCCI paper.
 
+# Reference genome and gene annotation
+Please follow get_reference_annotation
+
 # RNA-seq
-Follow RNAseq_analysis
+Please follow https://github.com/kohta-ikegami/FUCCI/RNAseq_analysis
 
 # GRO-seq
-Follow GROseq_analysis
+Please follow https://github.com/kohta-ikegami/FUCCI/GROseq_analysis
 
 # Intron
-Follow Intron_analysis
+Please follow https://github.com/kohta-ikegami/FUCCI/Intron_analysis
 
 # Downstream analyses
-Follow Downstream_analysis
+Please follow https://github.com/kohta-ikegami/FUCCI/Downstream_analysis
 
 # Files and codes
-Raw count files and codes are also included.
+Raw count files, gene annotations, and processed R files (rds), and shell and R scripts are included.
